@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+		<link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;1,100;1,400;1,700&family=Playfair+Display&family=Raleway:ital,wght@1,200&display=swap" rel="stylesheet">
+    <title>Some Colleges Have More Students from the Top 1 Percent than the Bottom 60</title>
+    <style>
+        body {
+          background-color: #f7f2df;
+          margin-left: 10rem;
+        	margin-right: 20rem;
+        	margin-bottom: 10rem
+          margin-top: 10rem;
+        }
+
+        .chart-container {
+            max-width: 1050px;
+            margin: 0 auto;
+            font-family: 'Lato', 'Raleway', sans-serif;
+        }
+
+        svg {
+            overflow: visible;
+        }
+
+
+        h1, h2, h3, h4, h5 {
+        	font-family: 'Lato', 'Raleway', sans-serif;
+        	/* margin-left: 1rem; */
+        	margin-right: 1rem;
+        }
+
+        h1 {
+        	font-size: 75px;
+        	font-weight: 100;
+        	font-style: italic;
+        	margin-bottom: 1rem;
+        	margin-top: 10rem;
+        	color: #1d4f16;
+        	/* color: #d5b4b8; */
+        }
+
+        h2 {
+        	font-family: 'Playfair Display', serif;
+        	color: #353802;
+        	margin-top: 1rem;
+          margin-right: 4rem;
+        	font-size: 24px;
+        }
+
+        h3 {
+        	font-weight: 400;
+        	font-style: italic;
+        }
+
+        h5 {
+        	font-weight: 400;
+        	color: #457e3d;
+        	font-size: 16px;
+        	font-style: italic;
+        }
+
+        p {
+        	font-family: 'Playfair Display', serif;
+        	font-size: 18px;
+        	color: #353802;
+        	/* margin-left: 1rem; */
+        	margin-right: 7rem;
+        }
+
+        p.source {
+          font-size: 12px;
+        }
+
+
+        .x .domain {
+            display: none;
+        }
+
+        .y .domain {
+            display: none;
+        }
+
+        .y .tick text {
+            font-size: 14px;
+            fill: #333;
+            font-family: 'Lato';
+        }
+
+        .x .tick text {
+            font-size: 14px;
+            fill: #333;
+            font-family: 'Lato';
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chart-container">
+        <h2 class="headline">
+            Where today's 25-year-olds went to college, grouped by their parents income
+        </h2>
+
+        <p>
+          About four in 10 students from the top 0.1 percent attend an Ivy League
+          or elite university, roughly equivalent to the share of students from
+          poor families who attend any two- or four-year college.
+        </p>
+
+        <svg width="1050px" height="500px">
+        </svg>
+        <br>
+        <br>
+        <p class="source">Source: The New York Times</p>
+    </div>
+</body>
+
+<script src="https://d3js.org/d3.v6.min.js"></script>
+
+<script>
+    console.log(d3)
+    let width = 1050;
+    let height = 500;
+
+    let colorsSchools = ["#43481c", "#798233", "#a0aa5d", "#cbd39f", "#Eff5cf", "#eebec7", "#dca4af", "#df94a3", "#d66982", "#E3d0d4"];
+    let incLabels = {
+      "par_toppt1pc": "Top 0.1%",
+      "par_top1pc": "Top 1%",
+      "par_top5pc": "Top 5%",
+      "par_top10pc": "Top 10%",
+      "par_q5": "Top 20%",
+      "par_q4": "4th quintile",
+      "par_q3": "3rd quintile",
+      "par_q2": "2nd quintile",
+      "par_q1": "Bottom 20%"
+    }
+
+
+    let color = d3.scaleOrdinal()
+        .domain(["Ivy plus", "Other elite", "Highly selective", "Selective", "Not selective", "Two year or less", "For-profit", "Not in college", "Incomplete"])
+        .range(colorsSchools)
+        .unknown("#ccc")
+
+    let svg = d3.select("body").select("svg")
+
+    let margin = { top: 0, right: 0, bottom: 30, left: 0 };
+
+    d3.csv("college-selection-by-income-group-01-13.csv").then(function (data) {
+        console.log("loaded")
+        console.log({ data })
+
+        data.forEach(d => {
+            d.income_group = incLabels[d.income_group]
+        })
+
+        console.log({ data })
+
+        let series = d3.stack()
+            .keys(["Ivy plus", "Other elite", "Highly selective", "Selective", "Not selective", "Two year or less", "For-profit", "Not in college", "Incomplete"])
+            (data)
+
+        console.log({ series })
+
+        let x = d3.scaleLinear()
+            .domain([0, 1])
+            .range([0, width])
+
+        let y = d3.scaleBand()
+            .domain(data.map(d => d["income_group"]).reverse())
+            .rangeRound([0, height])
+            .paddingInner(0.05)
+
+        let group = svg.append("g")
+            .selectAll("g")
+            .data(series)
+            .join("g")
+            .attr("fill", d => color(d.key))
+    //
+        let bars = group
+            .selectAll("rect")
+            .data(d => d)
+            .join("rect")
+            .attr("x", d => x(d[0]))
+            .attr("width", d => x(d[1]) - x(d[0]))
+            .attr("y", d => y(d.data.income_group))
+            .attr("height", y.bandwidth())
+
+        let xTickSettings = d3.axisBottom(x)
+            .tickPadding(4)
+            .tickSize(0)
+            .ticks(11)
+            .tickFormat(d3.format(".0%"))
+
+        let xAxis = svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", `translate(0,${height})`)
+            .call(g => g.selectAll(".domain").remove())
+            .call(xTickSettings)
+
+        let yTickSettings = d3.axisLeft(y)
+            .tickSize(0)
+            .tickPadding(12)
+
+        let yAxis = svg.append("g")
+            .attr("class", "y axis")
+            .attr("transform", `translate(${margin.left},0)`)
+            .call(yTickSettings)
+
+        // Add annotations
+        annotate("Ivy plus", 0.03, "top", "light")
+        annotate("Elite", 0.22, "top", "light")
+        annotate("Highly selective", 0.41, "top", "light")
+        annotate("Selective", 0.67, "top", "dark")
+        annotate("Not selective", 0.82, "top", "dark")
+        annotate("Two-year or less", 0.19, "bottom", "dark")
+        annotate("For-profit", 0.33, "bottom", "dark")
+        annotate("Not in college by age 22", 0.56, "bottom", "light")
+        annotate("Incomplete", 0.927, "bottom", "light")
+
+        function annotate(text, percent, position, colorText) {
+          svg.append("text")
+            .attr("class", "g-top-label")
+            .attr("x", x(percent))
+            .attr("y", function() {
+              if (position == "top") { return y("Top 0.1% percent"); }
+              else if (position == "bottom") { return y("Bottom 20%"); }
+            })
+            .attr("dy", y.bandwidth() / 2 + 6)
+            .attr("dx", percent)
+            .text(text)
+            .style("fill", function() {
+              if (colorText == "dark") { return "#43481c" }
+              else if (colorText == "light") { return "white"}
+            ;})
+            .style("font-size", "14px")
+        }
+    })
+
+</script>
